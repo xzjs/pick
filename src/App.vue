@@ -1,117 +1,214 @@
 <script setup>
-import { ref } from "vue";
+import { ref, reactive, onMounted } from "vue";
+import axios from "axios";
+import { ElMessage } from "element-plus";
 
-const result = ref([
+const scroll = ref(null);
+
+const data = reactive({
+  scene: "",
+  textarea: "",
+  text: "开始",
+  speechText: "开始语音识别",
+});
+
+const options = reactive([
   {
-    name: "杯子",
-    matching: "86%",
-    accuracy: "100%",
-    time: "2023/08/03 16:42:00",
+    value: "robot_cv",
+    label: "3D识别分拣",
   },
   {
-    name: "杯子",
-    matching: "86%",
-    accuracy: "100%",
-    time: "2023/08/03 16:42:00",
-  },
-  {
-    name: "杯子",
-    matching: "86%",
-    accuracy: "100%",
-    time: "2023/08/03 16:42:00",
-  },
-  {
-    name: "杯子",
-    matching: "86%",
-    accuracy: "100%",
-    time: "2023/08/03 16:42:00",
+    value: "small_2d_pick",
+    label: "宏景场景",
   },
 ]);
 
-const tasks = ref([
-  {
-    task_name: "搬运底盖",
-    equipment_name: "自动上下料机器人",
-    no: "WH202307200001",
-    product_name: "减速机",
-    product_model: "SY13",
-    num: 1,
-    time: "2023-07-12 15:17:07",
-    duration: "00:17:07",
-  },
-  {
-    task_name: "搬运底盖",
-    equipment_name: "自动上下料机器人",
-    no: "WH202307200001",
-    product_name: "减速机",
-    product_model: "SY13",
-    num: 1,
-    time: "2023-07-12 15:17:07",
-    duration: "00:17:07",
-  },
-  {
-    task_name: "搬运底盖",
-    equipment_name: "自动上下料机器人",
-    no: "WH202307200001",
-    product_name: "减速机",
-    product_model: "SY13",
-    num: 1,
-    time: "2023-07-12 15:17:07",
-    duration: "00:17:07",
-  },
-  {
-    task_name: "搬运底盖",
-    equipment_name: "自动上下料机器人",
-    no: "WH202307200001",
-    product_name: "减速机",
-    product_model: "SY13",
-    num: 1,
-    time: "2023-07-12 15:17:07",
-    duration: "00:17:07",
-  },
-]);
+const obj = reactive({
+  src: "",
+  disabled: false,
+  label: "3D识别分拣",
+});
+const messages = reactive([]);
+
+function select_change() {
+  obj.disabled = true;
+  options.forEach((item) => {
+    if (item.value == data.scene) {
+      obj.label = item.label;
+    }
+  });
+  axios
+    .post("/api/selector", { scene: data.scene })
+    .then((res) => {
+      console.log(res);
+      obj.disabled = false;
+    })
+    .catch((err) => {
+      ElMessage.error("设置失败");
+      obj.disabled = false;
+    });
+}
+
+function click() {
+  obj.disabled = true;
+  axios
+    .post("/api/button", data)
+    .then((res) => {
+      if (data.text == "开始") {
+        data.text = "停止";
+      } else {
+        data.text = "开始";
+      }
+      obj.disabled = false;
+    })
+    .catch((err) => {
+      ElMessage.error(data.text + "失败");
+      obj.disabled = false;
+    });
+}
+
+function speech() {
+  obj.disabled = true;
+  axios
+    .post("/api/speech", data)
+    .then((res) => {
+      if (data.speechText == "开始语音识别") {
+        data.speechText = "停止语音识别";
+      } else {
+        data.speechText = "开始语音识别";
+      }
+      obj.disabled = false;
+    })
+    .catch((err) => {
+      ElMessage.error(data.text + "失败");
+      obj.disabled = false;
+    });
+}
+
+function stop() {
+  axios
+    .post("/api/stop")
+    .then((res) => {
+      ElMessage("结束成功");
+    })
+    .catch(() => {
+      ElMessage.error("结束失败");
+    });
+}
+
+function getMessage() {
+  axios.get("/api/messages").then((res) => {
+    messages.push(res.data);
+    scrollRefTimer = setTimeout(() => {
+      scroll.value.scrollTop = scroll.value.scrollHeight;
+      clearTimeout(scrollRefTimer);
+    }, 0);
+  });
+}
+
+function getImg() {
+  var bufferImage = new Image();
+  bufferImage.src = "/api/img?t=" + Date.now();
+  bufferImage.onload = () => {
+    obj.src = bufferImage.src;
+  };
+}
+
+onMounted(() => {
+  // select_change();
+  setInterval(() => {
+    getMessage();
+    getImg();
+  }, 300);
+});
 </script>
 
 <template>
-  <div class="header">
-    <img src="@/assets/logo.jpg" class="logo" alt="" />
-    <span class="span1">中国信息通信研究院</span>
-    <span class="span2">
-      China Academy of lnformation and Communications Technology
-    </span>
-  </div>
-  <div class="container">
-    <el-row :gutter="20">
-      <el-col :span="8">
-        <div class="box">
-          <p>识别图</p>
-          <el-image src="@/assets/logo.svg" class="img" :fit="cover" />
-        </div>
-      </el-col>
-      <el-col :span="16">
-        <div class="box">
-          <p>识别结果</p>
-          <el-divider />
-          <el-table :data="result" stripe style="width: 100%">
-            <el-table-column prop="name" label="物体名称" />
-            <el-table-column prop="matching" label="匹配率" />
-            <el-table-column prop="accuracy" label="正确率" />
-            <el-table-column prop="time" label="识别时间" />
-          </el-table>
-        </div>
-      </el-col>
-    </el-row>
-    <el-table :data="tasks" stripe style="width: 100%;margin-top:30px">
-      <el-table-column prop="task_name" label="任务名称" />
-      <el-table-column prop="equipment_name" label="设备名称" />
-      <el-table-column prop="no" label="订单编号" />
-      <el-table-column prop="product_name" label="产品名称" />
-      <el-table-column prop="product_model" label="产品型号" />
-      <el-table-column prop="num" label="订单数量" />
-      <el-table-column prop="time" label="开始时间" />
-      <el-table-column prop="duration" label="持续时间" />
-    </el-table>
-  </div>
+  <el-container>
+    <el-header style="padding: 0; height: 80px">
+      <div class="header">
+        <img src="@/assets/logo.jpg" class="logo" alt="" />
+        <span class="span1">中国信息通信研究院</span>
+        <span class="span2">
+          China Academy of lnformation and Communications Technology
+        </span>
+      </div>
+    </el-header>
+    <el-main style="height: calc(100vh - 191px)">
+      <el-row :gutter="20" style="height: 100%">
+        <el-col :span="18" style="height: 100%">
+          <div class="box">
+            <p>{{ obj.label }}</p>
+            <!-- <el-image :src="obj.src" class="img" fit="contain" /> -->
+            <img :src="obj.src" alt="" class="img" />
+          </div>
+        </el-col>
+        <el-col :span="6">
+          <el-space direction="vertical" class="ctl" size="large">
+            <el-select
+              v-model="data.scene"
+              size="large"
+              @change="select_change"
+              :disabled="obj.disabled"
+              placeholder="请选择"
+            >
+              <el-option
+                v-for="item in options"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              ></el-option>
+            </el-select>
+            <el-button
+              type="primary"
+              size="large"
+              style="width: 198px"
+              @click="click"
+              :disabled="obj.disabled"
+            >
+              {{ data.text }}
+            </el-button>
+            <el-button
+              v-if="data.scene == 'robot_cv'"
+              type="primary"
+              size="large"
+              style="width: 198px"
+              @click="speech"
+              :disabled="obj.disabled"
+            >
+              {{ data.speechText }}
+            </el-button>
+            <el-input
+              v-model="data.textarea"
+              :rows="2"
+              type="textarea"
+              style="width: 198px"
+            />
+            <el-button
+              type="danger"
+              size="large"
+              style="width: 198px"
+              @click="stop"
+              :disabled="obj.disabled"
+            >
+              全部结束
+            </el-button>
+          </el-space>
+        </el-col>
+      </el-row>
+    </el-main>
+    <el-footer>
+      <p style="text-align: left; line-height: 18.5px">状态信息</p>
+      <div style="height: 92.5px; overflow: auto" ref="scroll">
+        <p
+          style="text-align: left; line-height: 18.5px"
+          :key="index"
+          v-for="(item, index) in messages"
+          v-html="item"
+        ></p>
+      </div>
+    </el-footer>
+  </el-container>
 </template>
 
 <style scoped>
@@ -156,14 +253,15 @@ const tasks = ref([
 .box {
   display: flex;
   flex-direction: column;
-  height: 450px;
   border-radius: 20px;
   box-shadow: -18px 0px 20px 18px rgba(15, 55, 121, 0.15);
   background: #fff;
+  height: 100%;
 }
 
 .container {
-  margin: 3%;
+  height: 100%;
+  padding: 20px;
 }
 
 p {
@@ -173,9 +271,15 @@ p {
 }
 
 .img {
-  width: 100%;
-  height: 100%;
-  padding: 5px;
+  height: calc(100% - 80px);
   border-radius: 20px;
+  object-fit: contain;
+}
+
+.ctl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
 }
 </style>

@@ -10,6 +10,7 @@ const data = reactive({
   textarea: "",
   text: "开始",
   speechText: "开始语音识别",
+  targets: "",
 });
 
 const options = reactive([
@@ -114,11 +115,20 @@ function getImg() {
   };
 }
 
+function getTarget() {
+  if (data.scene == "robot_cv") {
+    axios.get("/api/recognize_target").then((res) => {
+      data.targets = res.data;
+    });
+  }
+}
+
 onMounted(() => {
   // select_change();
   setInterval(() => {
     getMessage();
     getImg();
+    getTarget();
   }, 300);
 });
 </script>
@@ -193,6 +203,10 @@ onMounted(() => {
             >
               全部结束
             </el-button>
+            <div v-if="data.scene == 'robot_cv'">
+              <p>已识别物体</p>
+              <p>{{ data.targets }}</p>
+            </div>
           </el-space>
         </el-col>
       </el-row>

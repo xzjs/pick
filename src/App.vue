@@ -127,9 +127,11 @@ onMounted(() => {
   // select_change();
   setInterval(() => {
     getMessage();
+  }, 300);
+  setInterval(() => {
     getImg();
     getTarget();
-  }, 300);
+  }, 1000);
 });
 </script>
 

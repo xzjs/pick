@@ -1,4 +1,5 @@
 import './assets/main.css'
+import "./mock.js"
 
 import { createApp } from 'vue'
 import ElementPlus from 'element-plus'

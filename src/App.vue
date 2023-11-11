@@ -2,8 +2,10 @@
 import { ref, reactive, onMounted } from "vue";
 import axios from "axios";
 import { ElMessage } from "element-plus";
+import TypeIt from "typeit";
 
 const scroll = ref(null);
+const typeText = ref(null);
 
 const data = reactive({
   scene: "",
@@ -11,6 +13,9 @@ const data = reactive({
   text: "开始",
   speechText: "开始语音识别",
   targets: "",
+  typewriter: "",
+  llmtext: "",
+  myVar: 0,
 });
 
 const options = reactive([
@@ -75,8 +80,20 @@ function speech() {
     .then((res) => {
       if (data.speechText == "开始语音识别") {
         data.speechText = "停止语音识别";
+        data.typewriter = new TypeIt(typeText.value, {
+          cursorChar: "<span class='cursorChar'>|<span>", //用于光标的字符。HTML也可以
+          speed: 100,
+          lifeLike: true, // 使打字速度不规则
+          cursor: true, //在字符串末尾显示闪烁的光标
+          breakLines: false, // 控制是将多个字符串打印在彼此之上，还是删除这些字符串并相互替换
+        });
+        data.llmtext = "";
+        data.myVar = setInterval(() => {
+          getLLM();
+        }, 500);
       } else {
         data.speechText = "开始语音识别";
+        clearInterval(data.myVar);
       }
       obj.disabled = false;
     })
@@ -100,7 +117,7 @@ function stop() {
 function getMessage() {
   axios.get("/api/messages").then((res) => {
     messages.push(res.data);
-    scrollRefTimer = setTimeout(() => {
+    var scrollRefTimer = setTimeout(() => {
       scroll.value.scrollTop = scroll.value.scrollHeight;
       clearTimeout(scrollRefTimer);
     }, 0);
@@ -123,14 +140,21 @@ function getTarget() {
   }
 }
 
+function getLLM() {
+  if (data.scene == "robot_cv") {
+    axios.get("/api/llm_show").then((res) => {
+      data.llmtext += res.data.replace(/\n/g, "<br/>");
+      data.typewriter.type(data.llmtext).flush();
+    });
+  }
+}
+
 onMounted(() => {
-  // select_change();
   setInterval(() => {
     getMessage();
-  }, 300);
+  }, 500);
   setInterval(() => {
     getImg();
-    getTarget();
   }, 1000);
 });
 </script>
@@ -206,8 +230,7 @@ onMounted(() => {
               全部结束
             </el-button>
             <div v-if="data.scene == 'robot_cv'">
-              <p>已识别物体</p>
-              <p>{{ data.targets }}</p>
+              <span ref="typeText"></span>
             </div>
           </el-space>
         </el-col>
@@ -297,5 +320,10 @@ p {
   flex-direction: column;
   align-items: center;
   height: 100%;
+}
+
+.cursorChar {
+  display: inline-block;
+  margin-left: 2px;
 }
 </style>
